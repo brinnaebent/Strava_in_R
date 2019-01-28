@@ -3,7 +3,7 @@ In progress Running Analysis from the Strava API in R.
 
 This is the bones of an analysis I am trying to implement in an RShiny Web App (thus inputs are denoted as such)
 
-For those unfamiliar with [Strava](https://www.strava.com/), Strava is a platform for looking at your data from activities measured with fitness watches/pods/wearables. I have replicated their basic analysis here, which includes plots of pace, distance, elevation, and position overlayed on a map of the activity. 
+For those unfamiliar with [Strava](https://www.strava.com/), Strava is a platform for looking at your data from activities measured with fitness watches/pods/wearables. I have replicated their basic analysis here, which includes plots of pace, distance, elevation, and position overlayed on a map of the activity. Strava does not have easily accessible summary data (HR over time, speed over time, etc), so this is what I am focusing my analysis on. You can see a couple examples of this in the uploaded code. I am working on additional analysis, and will update this code at that time.
 
 **Please note that this is in progress and will be updated**
 
