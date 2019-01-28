@@ -1,0 +1,197 @@
+---
+title: "RunRunRun"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+API FROM STRAVA
+
+```{r}
+#devtools::install_github('fawda123/rStrava')
+library(rStrava) #Library from Strava has functions to convert data from API to R dataframe
+
+app_name <- '' # chosen by user - this is the app name in Strava
+app_client_id  <- '' # an integer, assigned by Strava
+app_secret <- '' # an alphanumeric secret, assigned by Strava
+
+# create the authentication token
+stoken <- httr::config(token = strava_oauth(app_name, app_client_id, app_secret))
+```
+
+GET RUNNING DATA, CATEGORIZE BY DATES
+
+```{r}
+myinfo <- get_athlete(stoken, id = '33690666')
+#head(myinfo)
+my_acts <- get_activity_list(stoken) #Gets list of all activites 
+
+#This allows us to just get the running data (hiking, workouts, cycling data all have different numrows values)
+numrows <- sapply(my_acts, NROW)
+index <- 52==numrows
+m_a <- my_acts[index]
+
+#Create list of just dates to choose from in APP
+library(purrr)
+dates <- map_chr(m_a[1:length(m_a)], "start_date")
+datesx <- as.Date(dates, "%Y-%m-%dT%H:%M:%SZ")
+#print(datesx) #In the APP, the dates will be in a list and you will select in Input
+
+```
+
+
+```{r}
+#Will allow us to summarize data across entire population of data
+summary <- compile_activities(m_a, acts = NULL, units = 'imperial')
+#summary
+```
+
+SUMMARIZE DATA
+
+```{r}
+#Calculations for Summary Data
+tdist <- sum(summary$distance) #Total Distance
+ttmin <- sum(summary$moving_time)/60 #Total time spent in min
+tthour <- ttmin/60 #Time spent hours
+ttday <- tthour/24 #Time spent days
+summary$average_heartrate<-as.numeric(summary$average_heartrate) 
+aHR <- mean(summary$average_heartrate) #Average HR
+```
+
+```{r}
+#Get summary plots
+library('ggplot2')
+summary2 = summary[!summary$average_heartrate < 140,]
+gahr <- ggplot(summary2, aes(seq_along(average_heartrate), average_heartrate))
+gahr + geom_line(color="red") + theme_minimal()+geom_smooth(method='lm', color='blue')+labs(x="Time", y="Average Heartrate (bpm)", title="Average HR changes over Time")
+
+summary3 = summary[!summary$average_speed < 4.5,]
+gas <- ggplot(summary3, aes(seq_along(average_speed), average_speed))
+gas + geom_line(color="blue") + theme_minimal()+geom_smooth(method='lm', color='yellow')+labs(x="Time (Days)", y="Average Speed (mph)", title="Average Speed changes over Time")
+```
+
+LOOK AT ONE RUNNING ACTIVITY IN MORE DETAIL
+
+```{r}
+#This portion of the code allows you to look at one activity in detail
+
+#INPUT HERE: (In the app this will be selected from a list of printed dates, above)
+inpt <- "2019-01-06" 
+inpt3 <- 2 #This tells you which activity from that day to choose- will also be a dropdown selected input in APP)
+
+inx <- which(datesx == inpt)
+
+if (length(inx) > 1){
+  inx=inx[inpt3]
+} else  {
+    inx=inx
+}
+
+
+```
+
+
+```{r}
+#Convert data to imperial units, miles, fahrenheit, hours, minutes/mile pace
+library(rStrava)
+strms_data <- get_activity_streams(m_a, stoken, acts = inx)
+strms_data$distance <- strms_data$distance * 0.621371
+strms_data$temp <- strms_data$temp + 32
+strms_data$time <- strms_data$time / 60
+speed <- strms_data$velocity_smooth * 0.01035618
+strms_data$speed <- speed ^-1
+strms_data$altitude <- strms_data$altitude*3.28084
+#head(strms_data)
+```
+
+
+```{r}
+#CLEANING DATA
+strms_data = strms_data[!strms_data$speed > 18,] #Speed can logically only be above this value. When the GPS watch is stopped/restarted, sometimes it causes spikes in the data) 
+
+```
+
+```{r}
+#Create plot 1: HR over distance
+library(ggplot2)
+gdhr <- ggplot(strms_data, aes(distance, heartrate))
+plothr <- gdhr+geom_point(color="red", alpha=0.8)+geom_line(y=160)+theme_bw()+labs(x="Distance (miles)", y="HeartRate (bpm)", title="Heart Rate over Distance")
+
+```
+
+```{r}
+#Create Plot 2: Speed
+gds <- ggplot(strms_data, aes(distance, speed))
+plots <- gds + geom_line(color="blue") + labs(x="Distance (miles)", y="Speed (minutes/mile)", title="Speed")+theme_minimal()+geom_smooth(method='lm', color='red')+scale_y_reverse()
+```
+
+
+```{r}
+#Create Plot 3: Elevation
+gde <- ggplot(strms_data, aes(distance, altitude))
+plote <- gde + geom_line(color="green")+ labs(x="Distance (miles)", y="Elevation (feet)", title="Elevation")+theme_minimal()
+```
+
+
+```{r}
+#Check path of run
+#gll <- ggplot(strms_data, aes(lng, lat))
+#gll + geom_path(color="green", lineend = "round")
+```
+```{r}
+
+#Becauase Google Maps API is midpoint-center aligned, so you need to define the run with INPUT to tell where the midpoint would be. This would be an input in the APP
+
+
+inpt2 <- "multipleoutandback"
+
+if (inpt2 =="outandback"){
+    midpoint <- length(strms_data$lng)/4
+} else if (inpt2 == "loop"){
+    midpoint <- length(strms_data$lng)/2
+} else if (inpt2 == "multipleoutandback"){
+    midpoint <- 2
+} else {
+    print('input error')
+} 
+
+
+
+```
+
+
+```{r}
+
+#Access Google Maps API
+
+library("ggmap")
+
+register_google(key = "AIzaSyDg_LaxuW8IXRIAWr6iuiJXJ2ImThmLQF4")
+loc <- revgeocode(c(lon = strms_data$lng[midpoint], lat = strms_data$lat[midpoint]))
+#gpic <- get_googlemap(loc, zoom = 14) 
+#ggmap(gpic)
+```
+
+```{r}
+
+#Create Plot on Google Map
+#maptypes: satellite, hybrid, roadmap, default is simple  
+
+plotmap <- qmap(loc, zoom = 14, maptype='roadmap') + geom_path(data=strms_data,aes(x = lng, y = lat),  colour = "red", size = 1.5, alpha = .5, lineend = "round")
+
+```
+
+```{r}
+#Combine plots to one figure panel
+require(cowplot)
+plot_grid(plotmap, plots, plote, plothr, labels = c('A', 'B', 'C', 'D'), ncol = 2)
+```
+
+
+
+
+
