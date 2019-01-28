@@ -1,5 +1,6 @@
 # Strava_in_R
-In progress Running Analysis from the Strava API in R
+In progress Running Analysis from the Strava API in R. 
+
 This is the bones of an analysis I am trying to implement in an RShiny Web App (thus inputs are denoted as such)
 
 **Please note that this is in progress and will be updated**
