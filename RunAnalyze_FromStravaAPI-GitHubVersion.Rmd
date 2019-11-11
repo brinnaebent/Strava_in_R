@@ -20,7 +20,7 @@ app_client_id  <- '' # an integer, assigned by Strava
 app_secret <- '' # an alphanumeric secret, assigned by Strava
 
 # create the authentication token
-stoken <- httr::config(token = strava_oauth(app_name, app_client_id, app_secret))
+stoken <- httr::config(token = strava_oauth(app_name, app_client_id, app_secret, app_scope = "activity:read_all"))
 ```
 
 GET RUNNING DATA, CATEGORIZE BY DATES
@@ -98,7 +98,7 @@ if (length(inx) > 1){
 ```{r}
 #Convert data to imperial units, miles, fahrenheit, hours, minutes/mile pace
 library(rStrava)
-strms_data <- get_activity_streams(m_a, stoken, acts = inx)
+strms_data <- get_activity_streams(m_a, stoken, acts = 1) #inx)
 strms_data$distance <- strms_data$distance * 0.621371
 strms_data$temp <- strms_data$temp + 32
 strms_data$time <- strms_data$time / 60
